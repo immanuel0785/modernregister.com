@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 from datetime import datetime, timedelta
 import io
 import os
@@ -18,14 +15,14 @@ import plotly.express as px
 from reportlab.pdfgen import canvas
 import streamlit as st
 
-# Configure page layout
+# Configure page layout[cite: 4]
 st.set_page_config(
     page_title="County Government of Nyeri | Digital Registry",
     page_icon="⚖️",
     layout="wide",
 )
 
-# --- 0. PROFESSIONAL REGISTRY INTERFACE STYLING ---
+# --- 0. PROFESSIONAL REGISTRY INTERFACE STYLING ---[cite: 4]
 nyeri_custom_css = """
 <style>
     :root {
@@ -59,6 +56,8 @@ nyeri_custom_css = """
     p, label, .stMarkdown, [data-testid="stCaptionContainer"] {
         color: var(--nyeri-text);
     }
+    
+    /* SIDEBAR STYLING & HIGH-CONTRAST BUTTON FIX */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #17324d 0%, #10263b 100%) !important;
         border-right: 3px solid var(--nyeri-gold);
@@ -66,10 +65,22 @@ nyeri_custom_css = """
     [data-testid="stSidebar"] * {
         color: #f4f7f5 !important;
     }
+    [data-testid="stSidebar"] div.stButton > button {
+        background: #ffffff !important;
+        color: #17324d !important;
+        font-weight: 800 !important;
+        border: 1px solid #dce6df !important;
+        border-left: 5px solid #d6a84f !important;
+    }
+    [data-testid="stSidebar"] div.stButton > button:hover {
+        background: #eef5f1 !important;
+        color: #0b4934 !important;
+    }
     [data-testid="stSidebar"] [data-testid="stAlert"] {
         background: rgba(255,255,255,0.09) !important;
         border: 1px solid rgba(255,255,255,0.18) !important;
     }
+    
     .nyeri-top-bar {
         background: linear-gradient(100deg, var(--nyeri-green-dark) 0%, var(--nyeri-green) 72%, #1b7255 100%);
         color: #ffffff !important;
@@ -160,13 +171,13 @@ nyeri_custom_css = """
     }
     div.stButton > button {
         width: 100% !important;
-        min-height: 78px;
+        min-height: 60px;
         background: #ffffff !important;
         color: var(--nyeri-navy) !important;
         border: 1px solid var(--nyeri-border) !important;
         border-left: 5px solid var(--nyeri-green) !important;
         border-radius: 12px !important;
-        padding: 14px 17px !important;
+        padding: 12px 17px !important;
         text-align: left !important;
         font-size: 0.96rem !important;
         font-weight: 700 !important;
@@ -227,10 +238,15 @@ nyeri_custom_css = """
 """
 st.markdown(nyeri_custom_css, unsafe_allow_html=True)
 
-# --- 1. SQLITE PERMANENT DATABASE ENGINE ---
+# --- 1. SQLITE PERMANENT DATABASE ENGINE (SAFE PATH FALLBACK) ---[cite: 4]
+try:
+  base_dir = Path(__file__).resolve().parent
+except NameError:
+  base_dir = Path.cwd()
+
 DB_FILE = os.environ.get(
     "NYERI_REGISTRY_DB_PATH",
-    str(Path(__file__).resolve().parent / "nyeri_registry_field_first.db"),
+    str(base_dir / "nyeri_registry_field_first.db"),
 )
 
 def get_db_connection():
@@ -474,7 +490,7 @@ def load_notification_logs(limit=500):
         "FROM notification_logs ORDER BY id DESC LIMIT ?", conn, params=(int(limit),)
     )
 
-# --- 2. REPORTLAB PDF GENERATORS ---[cite: 7]
+# --- 2. REPORTLAB PDF GENERATORS ---[cite: 4]
 def generate_pdf_certificate(r):
   buffer = io.BytesIO()
   c = canvas.Canvas(buffer, pagesize=(420, 560))
@@ -600,50 +616,14 @@ def number_to_words_kes(amount):
   except Exception:
     return f"AMOUNT IN WORDS UNAVAILABLE — KES {amount:,.2f}"
 
-# --- 3. EXCEL PARSER & STATE MANAGEMENT ---[cite: 7]
-@st.cache_data
-def process_uploaded_excel(file_source, sheet_name=0):
-  try:
-    df_raw = pd.read_excel(file_source, sheet_name=sheet_name, header=None)
-    if df_raw.empty:
-      return None
-
-    header_row_idx = 0
-    for idx, row in df_raw.head(15).iterrows():
-      row_str = " ".join([str(val).lower() for val in row.values if pd.notnull(val)])
-      if any(k in row_str for k in ["date", "s/no", "name", "station", "stamped", "total amount", "trader"]):
-        header_row_idx = idx
-        break
-
-    df = pd.read_excel(file_source, sheet_name=sheet_name, header=header_row_idx)
-    df.columns = df.columns.astype(str).str.strip()
-    df = df.dropna(how="all").reset_index(drop=True)
-    df = df.loc[:, ~df.columns.str.contains("^Unnamed", na=False)]
-
-    for col in df.columns:
-      if any(p in col.lower() for p in ["phone", "no.", "tel", "contact"]):
-        if "s/no" not in col.lower():
-          df[col] = df[col].fillna("").astype(str).str.replace(".0", "", regex=False)
-
-    for col in df.columns:
-      if any(n in col.lower() for n in ["total", "amount", "kshs", "stamped", "rejected", "adjusted", "fees", "charges", "expense"]):
-        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-
-    for col in df.columns:
-      if "date" in col.lower():
-        df[col] = pd.to_datetime(df[col], errors="coerce").dt.strftime("%Y-%m-%d")
-
-    return df
-  except Exception as e:
-    return None
-
+# --- 3. EXCEL PARSER & STATE MANAGEMENT ---[cite: 4]
 if "active_module" not in st.session_state:
   st.session_state["active_module"] = "Dashboard"
 
 if "sheets_dict" not in st.session_state:
   st.session_state["sheets_dict"] = {}
 
-# --- 4. TOP OFFICIAL BANNER & SIDEBAR CONTROL ---[cite: 7]
+# --- 4. TOP OFFICIAL BANNER & SIDEBAR CONTROL ---[cite: 4]
 st.markdown(
     """
 <div class="nyeri-top-bar">
@@ -675,7 +655,7 @@ if st.sidebar.button("📨 Trader Notifications"):
 st.sidebar.markdown("---")
 st.sidebar.caption("Records are entered by users; no bundled synthetic dataset is loaded.")
 
-# --- 5. TUESDAY OPENING INTERFACE (DASHBOARD ROUTER) ---[cite: 7]
+# --- 5. TUESDAY OPENING INTERFACE (DASHBOARD ROUTER) ---[cite: 4]
 if st.session_state["active_module"] == "Dashboard":
   st.markdown(
       """
@@ -751,7 +731,7 @@ if st.session_state["active_module"] == "Dashboard":
       unsafe_allow_html=True,
   )
 
-# --- 6. MODULE 1: TRADER REGISTRY ---[cite: 7]
+# --- 6. MODULE 1: TRADER REGISTRY ---[cite: 4]
 elif st.session_state["active_module"] == "Trader Registry":
   st.title("👥 Trader Registry Workspace")
   st.markdown("*Create a trader record once, then attach equipment and future inspections to that record.*")
@@ -812,7 +792,7 @@ elif st.session_state["active_module"] == "Trader Registry":
     else:
       st.info("No registered traders found in DB yet. Add one above!")
 
-# --- 7. MODULE 2: INSPECTIONS & FIELD VERIFICATION ENGINE ---[cite: 7]
+# --- 7. MODULE 2: INSPECTIONS & FIELD VERIFICATION ENGINE ---[cite: 4]
 elif st.session_state["active_module"] == "Inspections":
   st.title("📋 Field Inspections & Record Generator")
   st.markdown("*Select an existing trader and the equipment registered to that trader.*")
@@ -927,7 +907,7 @@ elif st.session_state["active_module"] == "Inspections":
     except Exception as e:
       st.error(f"Could not generate PDF: {e}")
 
-# --- 8. MODULE 3: REPORTS WORKSPACE ---[cite: 7]
+# --- 8. MODULE 3: REPORTS WORKSPACE ---[cite: 4]
 elif st.session_state["active_module"] == "Reports":
   st.title("📊 Daily Field Hand-In Report Workspace")
   st.markdown("*Generate a daily summary from saved prototype records for executive review.*")
@@ -993,7 +973,7 @@ elif st.session_state["active_module"] == "Reports":
   else:
     st.info("No field inspection records logged yet.")
 
-# --- 9. MODULE 4: EQUIPMENT REGISTRY WORKSPACE ---[cite: 7]
+# --- 9. MODULE 4: EQUIPMENT REGISTRY WORKSPACE ---[cite: 4]
 elif st.session_state["active_module"] == "Equipment Registry":
   st.title("⚖️ Equipment Registry")
   st.markdown("*Register each item against an existing trader.*")
@@ -1036,7 +1016,7 @@ elif st.session_state["active_module"] == "Equipment Registry":
       else:
         st.dataframe(equipment_df, use_container_width=True, hide_index=True)
 
-# --- 10. MODULE 5: BULK TRADER NOTIFICATIONS ---[cite: 7]
+# --- 10. MODULE 5: BULK TRADER NOTIFICATIONS ---[cite: 4]
 elif st.session_state["active_module"] == "Notifications":
   st.title("📨 Inspection Notifications")
   st.markdown("*Prepare a station-wide inspection notice and broadcast via SMS.*")
@@ -1052,7 +1032,7 @@ elif st.session_state["active_module"] == "Notifications":
     st.metric("Registered traders in selected station", len(eligible_df))
     st.dataframe(eligible_df, use_container_width=True, hide_index=True)
 
-# --- 11. MODULE 6: FEE RECORDS WORKSPACE ---[cite: 7]
+# --- 11. MODULE 6: FEE RECORDS WORKSPACE ---[cite: 4]
 elif st.session_state["active_module"] == "Fee Records":
   st.title("💳 Fee Assessments & Payment References")
   st.markdown("*Prototype fee assessments and payment references entered by the operator.*")
@@ -1063,7 +1043,7 @@ elif st.session_state["active_module"] == "Fee Records":
   else:
     st.info("No fee records found in the local database yet.")
 
-# --- 12. MODULE 7: AUDIT & ADMINISTRATION WORKSPACE (UPGRADED PLOTLY ANALYTICS) ---[cite: 7]
+# --- 12. MODULE 7: AUDIT & ADMINISTRATION WORKSPACE (PLOTLY ANALYTICS) ---[cite: 4]
 elif st.session_state["active_module"] == "Audit & Administration":
   st.title("🛡️ Executive Summary & Analytics")
   st.markdown("*Executive oversight metrics, sub-county revenue distribution, and inspection volumes for leadership review.*")
