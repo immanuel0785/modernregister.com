@@ -57,7 +57,7 @@ nyeri_custom_css = """
         color: var(--nyeri-text);
     }
     
-    /* SIDEBAR STYLING & HIGH-CONTRAST BUTTON FIX */
+    /* --- BULLETPROOF SIDEBAR BUTTON FIX --- */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #17324d 0%, #10263b 100%) !important;
         border-right: 3px solid var(--nyeri-gold);
@@ -65,16 +65,23 @@ nyeri_custom_css = """
     [data-testid="stSidebar"] * {
         color: #f4f7f5 !important;
     }
+    /* Force sidebar buttons to be dark navy with bold white text */
     [data-testid="stSidebar"] div.stButton > button {
-        background: #ffffff !important;
-        color: #17324d !important;
+        background: #12283d !important;
+        color: #ffffff !important;
         font-weight: 800 !important;
-        border: 1px solid #dce6df !important;
+        border: 1px solid #284c6e !important;
         border-left: 5px solid #d6a84f !important;
     }
+    [data-testid="stSidebar"] div.stButton > button p {
+        color: #ffffff !important;
+    }
     [data-testid="stSidebar"] div.stButton > button:hover {
-        background: #eef5f1 !important;
-        color: #0b4934 !important;
+        background: #1a3854 !important;
+        border-color: #d6a84f !important;
+    }
+    [data-testid="stSidebar"] div.stButton > button:hover p {
+        color: #d6a84f !important;
     }
     [data-testid="stSidebar"] [data-testid="stAlert"] {
         background: rgba(255,255,255,0.09) !important;
