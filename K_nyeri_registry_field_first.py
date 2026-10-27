@@ -15,14 +15,14 @@ import plotly.express as px
 from reportlab.pdfgen import canvas
 import streamlit as st
 
-# Configure page layout[cite: 4]
+# Configure page layout
 st.set_page_config(
     page_title="County Government of Nyeri | Digital Registry",
     page_icon="⚖️",
     layout="wide",
 )
 
-# --- 0. PROFESSIONAL REGISTRY INTERFACE STYLING ---[cite: 4]
+# --- 0. PROFESSIONAL REGISTRY INTERFACE STYLING ---
 nyeri_custom_css = """
 <style>
     :root {
@@ -57,7 +57,7 @@ nyeri_custom_css = """
         color: var(--nyeri-text);
     }
     
-    /* --- BULLETPROOF SIDEBAR BUTTON FIX --- */
+    /* BULLETPROOF SIDEBAR BUTTON FIX */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #17324d 0%, #10263b 100%) !important;
         border-right: 3px solid var(--nyeri-gold);
@@ -65,7 +65,6 @@ nyeri_custom_css = """
     [data-testid="stSidebar"] * {
         color: #f4f7f5 !important;
     }
-    /* Force sidebar buttons to be dark navy with bold white text */
     [data-testid="stSidebar"] div.stButton > button {
         background: #12283d !important;
         color: #ffffff !important;
@@ -245,7 +244,7 @@ nyeri_custom_css = """
 """
 st.markdown(nyeri_custom_css, unsafe_allow_html=True)
 
-# --- 1. SQLITE PERMANENT DATABASE ENGINE (SAFE PATH FALLBACK) ---[cite: 4]
+# --- 1. SQLITE PERMANENT DATABASE ENGINE (SAFE PATH FALLBACK) ---
 try:
   base_dir = Path(__file__).resolve().parent
 except NameError:
@@ -497,7 +496,7 @@ def load_notification_logs(limit=500):
         "FROM notification_logs ORDER BY id DESC LIMIT ?", conn, params=(int(limit),)
     )
 
-# --- 2. REPORTLAB PDF GENERATORS ---[cite: 4]
+# --- 2. REPORTLAB PDF GENERATORS ---
 def generate_pdf_certificate(r):
   buffer = io.BytesIO()
   c = canvas.Canvas(buffer, pagesize=(420, 560))
@@ -623,14 +622,14 @@ def number_to_words_kes(amount):
   except Exception:
     return f"AMOUNT IN WORDS UNAVAILABLE — KES {amount:,.2f}"
 
-# --- 3. EXCEL PARSER & STATE MANAGEMENT ---[cite: 4]
+# --- 3. EXCEL PARSER & STATE MANAGEMENT ---
 if "active_module" not in st.session_state:
   st.session_state["active_module"] = "Dashboard"
 
 if "sheets_dict" not in st.session_state:
   st.session_state["sheets_dict"] = {}
 
-# --- 4. TOP OFFICIAL BANNER & SIDEBAR CONTROL ---[cite: 4]
+# --- 4. TOP OFFICIAL BANNER & SIDEBAR CONTROL ---
 st.markdown(
     """
 <div class="nyeri-top-bar">
@@ -662,7 +661,7 @@ if st.sidebar.button("📨 Trader Notifications"):
 st.sidebar.markdown("---")
 st.sidebar.caption("Records are entered by users; no bundled synthetic dataset is loaded.")
 
-# --- 5. TUESDAY OPENING INTERFACE (DASHBOARD ROUTER) ---[cite: 4]
+# --- 5. DASHBOARD ROUTER ---
 if st.session_state["active_module"] == "Dashboard":
   st.markdown(
       """
@@ -738,7 +737,7 @@ if st.session_state["active_module"] == "Dashboard":
       unsafe_allow_html=True,
   )
 
-# --- 6. MODULE 1: TRADER REGISTRY ---[cite: 4]
+# --- 6. MODULE 1: TRADER REGISTRY ---
 elif st.session_state["active_module"] == "Trader Registry":
   st.title("👥 Trader Registry Workspace")
   st.markdown("*Create a trader record once, then attach equipment and future inspections to that record.*")
@@ -799,7 +798,7 @@ elif st.session_state["active_module"] == "Trader Registry":
     else:
       st.info("No registered traders found in DB yet. Add one above!")
 
-# --- 7. MODULE 2: INSPECTIONS & FIELD VERIFICATION ENGINE ---[cite: 4]
+# --- 7. MODULE 2: INSPECTIONS & FIELD VERIFICATION ENGINE ---
 elif st.session_state["active_module"] == "Inspections":
   st.title("📋 Field Inspections & Record Generator")
   st.markdown("*Select an existing trader and the equipment registered to that trader.*")
@@ -914,7 +913,7 @@ elif st.session_state["active_module"] == "Inspections":
     except Exception as e:
       st.error(f"Could not generate PDF: {e}")
 
-# --- 8. MODULE 3: REPORTS WORKSPACE ---[cite: 4]
+# --- 8. MODULE 3: REPORTS WORKSPACE ---
 elif st.session_state["active_module"] == "Reports":
   st.title("📊 Daily Field Hand-In Report Workspace")
   st.markdown("*Generate a daily summary from saved prototype records for executive review.*")
@@ -980,7 +979,7 @@ elif st.session_state["active_module"] == "Reports":
   else:
     st.info("No field inspection records logged yet.")
 
-# --- 9. MODULE 4: EQUIPMENT REGISTRY WORKSPACE ---[cite: 4]
+# --- 9. MODULE 4: EQUIPMENT REGISTRY WORKSPACE ---
 elif st.session_state["active_module"] == "Equipment Registry":
   st.title("⚖️ Equipment Registry")
   st.markdown("*Register each item against an existing trader.*")
@@ -1023,23 +1022,114 @@ elif st.session_state["active_module"] == "Equipment Registry":
       else:
         st.dataframe(equipment_df, use_container_width=True, hide_index=True)
 
-# --- 10. MODULE 5: BULK TRADER NOTIFICATIONS ---[cite: 4]
+# --- 10. MODULE 5: BULK TRADER NOTIFICATIONS (FULLY RESTORED COMPOSER & LOGS) ---
 elif st.session_state["active_module"] == "Notifications":
   st.title("📨 Inspection Notifications")
   st.markdown("*Prepare a station-wide inspection notice and broadcast via SMS.*")
   st.markdown("---")
+
   traders_df = load_traders_from_db()
   if traders_df.empty:
-    st.info("No traders registered yet.")
+    st.info("No traders registered yet in the database. Add traders first to send notifications.")
   else:
     stations = sorted(traders_df["station"].dropna().astype(str).unique().tolist())
     target_station = st.selectbox("Target station / sub-county", stations, key="notify_station")
     eligible_df = traders_df[traders_df["station"].astype(str) == target_station].copy()
     eligible_df["normalized_phone"] = eligible_df["phone_no"].map(normalize_kenyan_phone)
+    valid_count = eligible_df["normalized_phone"].notna().sum()
+
     st.metric("Registered traders in selected station", len(eligible_df))
     st.dataframe(eligible_df, use_container_width=True, hide_index=True)
 
-# --- 11. MODULE 6: FEE RECORDS WORKSPACE ---[cite: 4]
+    st.markdown("---")
+    st.subheader("💬 Compose Station Broadcast SMS")
+
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+      inspection_month = st.selectbox(
+          "Upcoming Inspection Month",
+          [
+              "January", "February", "March", "April", "May", "June",
+              "July", "August", "September", "October", "November", "December"
+          ],
+          index=datetime.now().month - 1
+      )
+    with col_c2:
+      sender_identity = st.text_input("Sender Identification", value="NYERI-TRADE", disabled=True)
+
+    default_template = (
+        "NOTICE: County Government of Nyeri Weights & Measures inspection for {station} is scheduled for {month}. "
+        "Trader: {trader_name}. Please ensure all weighing/measuring equipment is ready for statutory verification."
+    )
+
+    msg_template = st.text_area(
+        "SMS Message Template (Placeholders: {trader_name}, {station}, {month})",
+        value=default_template,
+        height=110
+    )
+
+    # Preview sample message
+    sample_trader = eligible_df.iloc[0]["trader_name"] if not eligible_df.empty else "DEMO TRADER"
+    sample_preview = msg_template.format(
+        trader_name=sample_trader,
+        station=target_station,
+        month=inspection_month
+    )
+
+    st.info(f"📱 **SMS Preview:**\n\n*{sample_preview}*")
+
+    at_configured = bool(os.environ.get("AT_USERNAME") and os.environ.get("AT_API_KEY"))
+    if not at_configured:
+      st.caption("ℹ️ *Note: Africa's Talking API credentials not set. Clicks will trigger simulated dispatch logging for demo purposes.*")
+
+    if st.button("🚀 Broadcast SMS Notice to Station Traders"):
+      campaign_id = f"CMP-{uuid.uuid4().hex[:6].upper()}"
+      success_count = 0
+      fail_count = 0
+      progress_bar = st.progress(0)
+
+      for i, (_, row) in enumerate(eligible_df.iterrows()):
+        phone = row["normalized_phone"]
+        trader_dict = {"id": row["id"], "trader_name": row["trader_name"], "phone_no": row["phone_no"]}
+        
+        personalized_msg = msg_template.format(
+            trader_name=row["trader_name"],
+            station=target_station,
+            month=inspection_month
+        )
+
+        if not phone:
+          save_notification_log(campaign_id, target_station, inspection_month, trader_dict, personalized_msg, "Failed", "Invalid Phone Number")
+          fail_count += 1
+        else:
+          if at_configured:
+            sent, resp = send_africastalking_sms(phone, personalized_msg)
+            status = "Sent" if sent else "Failed"
+            save_notification_log(campaign_id, target_station, inspection_month, trader_dict, personalized_msg, status, resp)
+            if sent:
+              success_count += 1
+            else:
+              fail_count += 1
+          else:
+            # Simulated demo broadcast fallback
+            time.sleep(0.1)
+            save_notification_log(campaign_id, target_station, inspection_month, trader_dict, personalized_msg, "Simulated Sent", "Demo Mode Success")
+            success_count += 1
+
+        progress_bar.progress((i + 1) / len(eligible_df))
+
+      st.success(f"Broadcast completed! Campaign ID: `{campaign_id}`. Sent: {success_count}, Failed: {fail_count}.")
+      st.rerun()
+
+    st.markdown("---")
+    st.subheader("📋 Sent Notification Log & History")
+    logs_df = load_notification_logs(limit=100)
+    if not logs_df.empty:
+      st.dataframe(logs_df, use_container_width=True, hide_index=True)
+    else:
+      st.info("No notification broadcast logs recorded yet.")
+
+# --- 11. MODULE 6: FEE RECORDS WORKSPACE ---
 elif st.session_state["active_module"] == "Fee Records":
   st.title("💳 Fee Assessments & Payment References")
   st.markdown("*Prototype fee assessments and payment references entered by the operator.*")
@@ -1050,7 +1140,7 @@ elif st.session_state["active_module"] == "Fee Records":
   else:
     st.info("No fee records found in the local database yet.")
 
-# --- 12. MODULE 7: AUDIT & ADMINISTRATION WORKSPACE (PLOTLY ANALYTICS) ---[cite: 4]
+# --- 12. MODULE 7: AUDIT & ADMINISTRATION WORKSPACE (PLOTLY ANALYTICS) ---
 elif st.session_state["active_module"] == "Audit & Administration":
   st.title("🛡️ Executive Summary & Analytics")
   st.markdown("*Executive oversight metrics, sub-county revenue distribution, and inspection volumes for leadership review.*")
@@ -1085,7 +1175,6 @@ elif st.session_state["active_module"] == "Audit & Administration":
 
     with col_v1:
       st.markdown("#### 🥧 Revenue Share by Sub-County")
-      # Colorful Donut Pie Chart tailored for leadership review
       fig_pie = px.pie(
           station_group, 
           names="station", 
@@ -1103,7 +1192,6 @@ elif st.session_state["active_module"] == "Audit & Administration":
 
     with col_v2:
       st.markdown("#### 📶 Inspection Volume by Station")
-      # Color-coded Bar Chart
       fig_bar = px.bar(
           station_group, 
           x="station", 
